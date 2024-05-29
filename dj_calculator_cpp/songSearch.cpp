@@ -61,7 +61,7 @@ void loadSongs(const std::string& filePath, const std::string& sheetName) {
                 for (int i = 0; i < 4; ++i) {
                     std::cout << song.difficulty[i] << " ";
                 }*/
-                std::cout << std::endl;
+                //std::cout << std::endl;
 
                 songs_frame.push_back(song);
             }

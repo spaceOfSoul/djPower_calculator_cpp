@@ -12,6 +12,7 @@
 #include <QVector>
 #include <QStandardItemModel>
 #include <QListView>
+#include <QRadioButton>
 #include "songSearch.h"
 
 class PowerApp : public QWidget {
@@ -30,9 +31,14 @@ private:
     QMap<QString, QLabel*> right_labels;
     QLabel* song_list_label;
     QListView* song_list_view;
-    QStandardItemModel* song_list_model;
+
+    QRadioButton* radio_4B;
+    QRadioButton* radio_5B;
+    QRadioButton* radio_6B;
+    QRadioButton* radio_8B;
 
     std::vector<Song> recommand_songs;
 
     void initUI();
+    int getSelectedButton() const;
 };
