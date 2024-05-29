@@ -7,8 +7,12 @@
 struct Song {
     std::string dlc;
     std::string songName;
+    int buttonType;
+    int difficulty[4];
 };
+extern std::vector<Song> songs_frame; // 전역으로 쓸거임
 
 std::string cellType(OpenXLSX::XLValueType type);
 
-std::vector<Song> filter_songs(const std::string& filePath, const std::string& sheetName, int button_type, int difficulty, bool is_sc);
+void loadSongs(const std::string& filePath, const std::string& sheetName);
+std::vector<Song> filter_songs(int button_type, int difficulty, bool is_sc);

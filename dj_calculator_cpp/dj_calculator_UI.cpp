@@ -11,6 +11,7 @@ PowerApp::PowerApp(QWidget* parent)
 void PowerApp::initUI() {
     QVBoxLayout* main_layout = new QVBoxLayout(this);
 
+    // 입력단
     QHBoxLayout* input_layout = new QHBoxLayout();
     main_layout->addLayout(input_layout);
 
@@ -30,6 +31,7 @@ void PowerApp::initUI() {
     main_layout->addWidget(calculate_button);
     connect(calculate_button, &QPushButton::clicked, this, &PowerApp::calculate);
 
+    // 산출 정확도 표시단
     QHBoxLayout* results_layout = new QHBoxLayout();
     main_layout->addLayout(results_layout);
 
@@ -51,9 +53,19 @@ void PowerApp::initUI() {
     results_layout->addWidget(left_scroll);
     results_layout->addWidget(right_scroll);
 
+    // 노래 목록단
+    song_list_label = new QLabel("Recommand Songs:");
+    main_layout->addWidget(song_list_label);
+
+    song_list_view = new QListView(this);
+    song_list_model = new QStandardItemModel(song_list_view);
+    song_list_view->setModel(song_list_model);
+    main_layout->addWidget(song_list_view);
+
+    // 창 설정
     setWindowTitle("DJMAX DJPower Calculator");
     setGeometry(300, 300, 800, 600);
-    
+
     // initialize results
     for (auto it = difficulty_constant.begin(); it != difficulty_constant.end(); ++it) {
         QString difficulty = it.key();
@@ -93,16 +105,40 @@ void PowerApp::calculate() {
     double dj_power1_value = dj_power1_input->text().toDouble(&ok1);
     double dj_power2_value = dj_power2_input->text().toDouble(&ok2);
 
+
     for (auto it = difficulty_constant.begin(); it != difficulty_constant.end(); ++it) {
         QString difficulty = it.key();
         QString basic_acc = "-";
         QString new_acc = "-";
 
+        bool is_sc = true;
+        std::cout << difficulty.toStdString() << "\n";
+        int difficulty_num = difficulty.toInt(&is_sc); // 바로 안되면 sc, 바로 되면 sc 아님.
+        //std::cout << "convert : " << difficulty_num << "\n";
+        is_sc = !is_sc;
+        //std::cout << "is_sc : " << is_sc << "\n";
+
+
+        if (is_sc) {
+            difficulty_num = difficulty.mid(2).toInt();
+        }
+        //std::cout << "re convert : " << difficulty_num << "\n";
+
         if (ok1) {
             QVector<double> accuracies1;
             for (const auto& result : results[difficulty]) {
                 if (result.second > dj_power1_value) {
+                    //std::cout << is_sc << " " << difficulty_num << "\n";
                     accuracies1.append(result.first);
+                    
+                    std::vector<Song> songs = filter_songs(4, difficulty_num, is_sc); // 임시로 4button
+                    for (Song song : songs) {
+                        // 최신곡 제외
+                        if (song.dlc == "V EXTENSION 5" || song.dlc == "FALCOM" || song.songName == "Kamui" || song.songName == "Re:BIRTH") {
+                            continue;
+                        }
+                        recommand_songs.push_back(song);
+                    }
                 }
             }
             if (!accuracies1.isEmpty()) {
@@ -115,6 +151,13 @@ void PowerApp::calculate() {
             for (const auto& result : results[difficulty]) {
                 if (result.second > dj_power2_value) {
                     accuracies2.append(result.first);
+
+                    std::vector<Song> songs = filter_songs(4, difficulty_num, is_sc); // 임시로 4button
+                    for (Song song : songs) {
+                        // 최신곡만
+                        if (song.dlc == "V EXTENSION 5" || song.dlc == "FALCOM" || song.songName == "Kamui" || song.songName == "Re:BIRTH")
+                            recommand_songs.push_back(song);
+                    }
                 }
             }
             if (!accuracies2.isEmpty()) {
@@ -129,4 +172,33 @@ void PowerApp::calculate() {
             right_labels[difficulty]->setText(difficulty + " :\t Basic: " + basic_acc + ",\t New: " + new_acc);
         }
     }
+
+    // 추천 목록 정리
+    std::sort(recommand_songs.begin(), recommand_songs.end(), [](const Song& a, const Song& b) {
+        return a.songName < b.songName;
+        });
+    auto last = std::unique(recommand_songs.begin(), recommand_songs.end(), [](const Song& a, const Song& b) {
+        return a.songName == b.songName;
+        });
+    recommand_songs.erase(last, recommand_songs.end());
+
+    // 리스트 뷰 업뎃
+    song_list_view->setUpdatesEnabled(false);  // 업데이트 중지
+
+    QStandardItemModel* model = new QStandardItemModel(song_list_view);
+
+    for (const Song& song : recommand_songs) {
+        //std::cout << song.dlc << ", " << song.songName << std::endl;
+        QString itemText = QString("%1\t\t\t%2\t")
+            .arg(QString::fromStdString(song.songName))
+            .arg(QString::fromStdString(song.dlc));
+        QStandardItem* item = new QStandardItem(itemText);
+        model->appendRow(item);
+    }
+
+    song_list_view->setModel(model);
+
+    song_list_view->setUpdatesEnabled(true);  // 업데이트 재개
+
+    recommand_songs.clear();
 }

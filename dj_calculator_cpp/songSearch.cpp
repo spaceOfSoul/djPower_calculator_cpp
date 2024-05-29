@@ -1,5 +1,7 @@
 #include "songSearch.h"
 
+std::vector<Song> songs_frame;
+
 std::string cellType(OpenXLSX::XLValueType type) {
     switch (type) {
     case OpenXLSX::XLValueType::Empty:
@@ -17,75 +19,87 @@ std::string cellType(OpenXLSX::XLValueType type) {
     }
 }
 
-std::vector<Song> filter_songs(const std::string& filePath, const std::string& sheetName, int button_type, int difficulty, bool is_sc) {
-    std::vector<Song> result;
-
+void loadSongs(const std::string& filePath, const std::string& sheetName) {
     try {
         OpenXLSX::XLDocument doc;
         doc.open(filePath);
         auto wks = doc.workbook().worksheet(sheetName);
 
         uint32_t startRow = 6;
-        uint32_t startCol = 0;
-        uint32_t endCol = 0;
-
-        // 버튼 타입 구분
-        switch (button_type) {
-        case 4:
-            startCol = 4;
-            endCol = 7;
-            break;
-        case 5:
-            startCol = 8;
-            endCol = 11;
-            break;
-        case 6:
-            startCol = 12;
-            endCol = 15;
-            break;
-        case 8:
-            startCol = 16;
-            endCol = 19;
-            break;
-        default:
-            throw std::invalid_argument("Invalid button type");
-        }
-
-        if (is_sc) {
-            startCol = endCol; // SC인 경우 마지막 열만
-        }
-        else {
-            endCol -= 1; // SC가 아닌 경우 마지막 열빼고
-        }
+        uint32_t maxCols = 19; // 최대 열 수
 
         for (uint32_t row = startRow; row <= wks.rowCount(); ++row) {
-            bool found = false;
-            for (uint32_t col = startCol; col <= endCol; ++col) {
-                auto cell = wks.cell(row, col);
-                // std::cout << cell.value() << " " << cellType(cell.value().type()) << "\n";
-                if (cell.value().type() == OpenXLSX::XLValueType::Float && abs(cell.value().get<float>() - difficulty) <= 0.1) { // float라 이렇게 검색
-                    found = true;
-                    break;
-                }
+            std::string dlc = wks.cell(row, 2).value().get<std::string>();
+            std::string songName;
+            if (wks.cell(row, 3).value().type() == OpenXLSX::XLValueType::Float) { // 3:33이 엑셀에서는 시간처럼 되어있음
+                songName = "3:33";
+            }
+            else {
+                songName = wks.cell(row, 3).value().get<std::string>();
             }
 
-            if (found) {
+            for (int buttonType : {4, 5, 6, 8}) {
                 Song song;
-                song.dlc = wks.cell(row, 2).value().getString();
-                if (wks.cell(row, 3).value().type() == OpenXLSX::XLValueType::Float) // 3:33이 엑셀에는 시간으로 저장됨 (h:mm)
-                    song.songName = "3:33";
-                else
-                    song.songName = wks.cell(row, 3).value().getString();
-                result.push_back(song);
+                song.dlc = dlc;
+                song.songName = songName;
+                song.buttonType = buttonType;
+
+                for (uint32_t i = 0; i < 4; ++i) {
+                    uint32_t col = 4 + (buttonType - 4) * 4 + i;
+                    if (col <= maxCols) {
+                        auto cell = wks.cell(row, col);
+                        if (cell.value().type() == OpenXLSX::XLValueType::Float) {
+                            song.difficulty[i] = (int)cell.value().get<float>();
+                        }
+                        else {
+                            song.difficulty[i] = 0;
+                        }
+                    }
+                }
+
+                /*std::cout << "loaded: " << song.dlc << ", " << song.songName << ", buttonType: " << song.buttonType << ", difficulties: ";
+                for (int i = 0; i < 4; ++i) {
+                    std::cout << song.difficulty[i] << " ";
+                }*/
+                std::cout << std::endl;
+
+                songs_frame.push_back(song);
             }
         }
 
         doc.close();
     }
-
     catch (const std::exception& e) {
         std::cerr << "error: " << e.what() << std::endl;
     }
+}
 
+std::vector<Song> filter_songs(int button_type, int difficulty, bool is_sc) {
+    std::vector<Song> result;
+
+    for (const auto& song : songs_frame) {
+        if (song.buttonType != button_type) {
+            continue;
+        }
+
+        bool found = false;
+        if (is_sc) {
+            if (song.difficulty[3] == difficulty) { // SC 난이도
+                found = true;
+            }
+        }
+        else {
+            for (int i = 0; i < 3; ++i) {
+                if (song.difficulty[i] == difficulty) {
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if (found) {
+            result.push_back(song);
+        }
+    }
     return result;
 }
+
