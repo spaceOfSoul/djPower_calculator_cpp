@@ -37,12 +37,18 @@
     <ClCompile Include="calculate.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="songSearch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="constant.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="calculate.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="songSearch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
